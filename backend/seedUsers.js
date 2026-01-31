@@ -22,9 +22,9 @@ const dummyUsers = [
     role: 'admin'
   },
   {
-    name: 'Student One',
-    email: 'student1@college.edu',
-    password: 'student123',
+    name: 'Subashree S',
+    email: 'subashree_23it52@kgkite.ac.in',
+    password: 'student123pass',
     role: 'student',
     department: 'Computer Science',
     semester: 3,

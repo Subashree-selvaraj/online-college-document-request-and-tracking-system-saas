@@ -16,6 +16,10 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/college-portal')
@@ -30,8 +34,8 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Find user by email (case insensitive)
+    const user = await User.findOne({ email: { $regex: new RegExp('^' + email + '$', 'i') } });
     
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -76,10 +80,17 @@ app.post('/api/auth/login', async (req, res) => {
 // Import routes
 const documentsRoutes = require('./routes/documents');
 const requestsRoutes = require('./routes/requests');
+const documentTypesRoutes = require('./routes/documentTypes');
+const emailNotificationsRoutes = require('./routes/emailNotifications');
+const usersRoutes = require('./routes/users');
 
 // Use routes
 app.use('/api/documents', documentsRoutes);
 app.use('/api/requests', requestsRoutes);
+app.use('/api/documents/types', documentTypesRoutes);
+app.use('/api/notifications/email', emailNotificationsRoutes);
+app.use('/api/email', emailNotificationsRoutes); // Add route at expected path
+app.use('/api/users', usersRoutes);
 
 // User routes
 app.get('/api/users/me', async (req, res) => {

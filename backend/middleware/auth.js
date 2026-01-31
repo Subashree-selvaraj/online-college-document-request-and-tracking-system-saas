@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 module.exports = async function(req, res, next) {
-  // Get token from header
-  const token = req.header('x-auth-token');
+  // Get token from header or query parameter (for download links)
+  const token = req.header('x-auth-token') || req.query.token;
 
   // Check if no token
   if (!token) {
