@@ -1,6 +1,21 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Compute API base URL with robust fallbacks for production and local dev
+let API_URL = process.env.REACT_APP_API_URL;
+if (!API_URL && typeof window !== 'undefined') {
+  const host = window.location.hostname;
+  if (host === 'campusledger.onrender.com') {
+    API_URL = 'https://online-college-docs-backend.onrender.com/api';
+  } else if (host === 'localhost' || host === '127.0.0.1') {
+    API_URL = 'http://localhost:5000/api';
+  } else {
+    // Safe default for non-local hosts
+    API_URL = 'https://online-college-docs-backend.onrender.com/api';
+  }
+}
+if (!API_URL) {
+  API_URL = 'http://localhost:5000/api';
+}
 
 // Create axios instance with base URL
 const api = axios.create({
