@@ -15,6 +15,7 @@ const documents = [
     name: 'Transcript',
     description: 'Official academic record showing courses taken, grades received, and credits earned.',
     category: 'Academic Certificates',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -84,6 +85,7 @@ const documents = [
     name: 'Degree Certificate',
     description: 'Official document certifying the completion of a degree program.',
     category: 'Academic Certificates',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -155,6 +157,7 @@ const documents = [
     name: 'Consolidated Marksheet',
     description: 'Complete record of all semester marks consolidated into a single document.',
     category: 'Academic Certificates',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -212,6 +215,7 @@ const documents = [
     name: 'Course Completion Certificate',
     description: 'Certificate confirming the completion of a specific course or program.',
     category: 'Academic Certificates',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -269,6 +273,7 @@ const documents = [
     name: 'Enrollment Verification Letter',
     description: 'Document confirming current enrollment status at the institution.',
     category: 'Academic Certificates',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -332,6 +337,7 @@ const documents = [
     name: 'Letter of Recommendation (LOR)',
     description: 'Letter from faculty or staff recommending a student for employment, scholarships, or further education.',
     category: 'Recommendation / Other Requests',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -397,6 +403,7 @@ const documents = [
     name: 'Transfer Certificate (TC)',
     description: 'Document issued when a student transfers from one institution to another.',
     category: 'Transfer / Study Related',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -448,6 +455,7 @@ const documents = [
     name: 'Bonafide Certificate',
     description: 'Certificate confirming that a student is genuinely enrolled at the institution.',
     category: 'Transfer / Study Related',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -500,6 +508,7 @@ const documents = [
     name: 'Migration Certificate',
     description: 'Certificate issued when a student migrates from one university to another.',
     category: 'Transfer / Study Related',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'universityMigratedTo',
@@ -575,6 +584,7 @@ const documents = [
     name: 'Character Certificate',
     description: 'Certificate attesting to the character and conduct of a student during their time at the institution.',
     category: 'Transfer / Study Related',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'periodOfStudy',
@@ -628,6 +638,7 @@ const documents = [
     name: 'Study Certificate',
     description: 'Certificate confirming that a student is studying or has studied at the institution.',
     category: 'Transfer / Study Related',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'reason',
@@ -680,6 +691,7 @@ const documents = [
     name: 'Internship / Industrial Training Certificate',
     description: 'Certificate confirming completion of internship or industrial training.',
     category: 'Recommendation / Other Requests',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'organizationName',
@@ -725,6 +737,7 @@ const documents = [
     name: 'No Objection Certificate (NOC)',
     description: 'Certificate stating that the institution has no objection to the student participating in an activity or program.',
     category: 'Recommendation / Other Requests',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'organizationName',
@@ -770,6 +783,7 @@ const documents = [
     name: 'Fee Receipt / Dues Clearance Certificate',
     description: 'Certificate confirming that a student has paid all fees and has no outstanding dues.',
     category: 'Recommendation / Other Requests',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'purpose',
@@ -809,6 +823,7 @@ const documents = [
     name: 'Medium of Instruction Certificate',
     description: 'Certificate confirming the language of instruction for a course or program.',
     category: 'Recommendation / Other Requests',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'courseName',
@@ -855,6 +870,7 @@ const documents = [
     name: 'Attendance Certificate',
     description: 'Certificate confirming a student\'s attendance record.',
     category: 'Recommendation / Other Requests',
+    requiresPrincipalApproval: true,
     requiredFields: [
       {
         name: 'purpose',

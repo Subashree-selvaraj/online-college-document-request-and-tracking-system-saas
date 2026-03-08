@@ -45,6 +45,10 @@ const DocumentSchema = new mongoose.Schema({
     enum: ['Academic Certificates', 'Transfer / Study Related', 'Recommendation / Other Requests'],
     default: 'Academic Certificates'
   },
+  requiresPrincipalApproval: {
+    type: Boolean,
+    default: false
+  },
   isActive: {
     type: Boolean,
     default: true

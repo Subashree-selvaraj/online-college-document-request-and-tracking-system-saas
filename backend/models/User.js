@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student', 'admin'],
+    enum: ['student', 'admin', 'principal', 'hod'],
     default: 'student'
   },
   department: {
@@ -32,6 +32,16 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
     required: function() { return this.role === 'student'; }
+  },
+  handledDocumentTypes: {
+    type: [String],
+    default: []
+  },
+  title: {
+    type: String
+  },
+  signatureUrl: {
+    type: String
   },
   createdAt: {
     type: Date,

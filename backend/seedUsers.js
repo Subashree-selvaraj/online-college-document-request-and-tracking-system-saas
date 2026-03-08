@@ -16,10 +16,58 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/college-por
 // Dummy users data
 const dummyUsers = [
   {
-    name: 'Admin User',
-    email: 'admin@college.edu',
+    name: 'Admin Academic',
+    email: 'adminacademic@college.edu',
     password: 'admin123',
-    role: 'admin'
+    role: 'admin',
+    handledDocumentTypes: [
+      'Transcript',
+      'Degree Certificate',
+      'Consolidated Marksheet',
+      'Course Completion Certificate',
+      'Bonafide Certificate',
+      'Letter of Recommendation (LOR)',
+      'Study Certificate',
+      'Enrollment Verification Letter',
+      'Medium of Instruction Certificate',
+      'Character Certificate',
+      'Attendance Certificate'
+    ]
+  },
+  {
+    name: 'Admin Accounts',
+    email: 'adminaccounts@college.edu',
+    password: 'admin123',
+    role: 'admin',
+    handledDocumentTypes: [
+      'Fee Receipt / Dues Clearance Certificate'
+    ]
+  },
+  {
+    name: 'Principal User',
+    email: 'principal@college.edu',
+    password: 'principal123',
+    role: 'principal',
+    title: 'Principal',
+    signatureUrl: ''
+  },
+  {
+    name: 'HOD CSE',
+    email: 'hodcse@college.edu',
+    password: 'hod123',
+    role: 'hod',
+    department: 'Computer Science',
+    title: 'HOD - CSE',
+    signatureUrl: ''
+  },
+  {
+    name: 'HOD IT',
+    email: 'hodit@college.edu',
+    password: 'hod123',
+    role: 'hod',
+    department: 'Information Technology',
+    title: 'HOD - IT',
+    signatureUrl: ''
   },
   {
     name: 'Subashree S',

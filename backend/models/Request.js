@@ -27,6 +27,59 @@ const RequestSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  assignedAdmin: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  requiresPrincipalApproval: {
+    type: Boolean,
+    default: false
+  },
+  principalApproved: {
+    type: Boolean,
+    default: false
+  },
+  principalId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  principalApprovedAt: {
+    type: Date
+  },
+  approvalStage: {
+    type: String,
+    enum: [
+      'submitted',
+      'admin_verified',
+      'hod_verified',
+      'principal_verified',
+      'ready_for_issue',
+      'completed',
+      'rejected'
+    ],
+    default: 'submitted'
+  },
+  expectedCompletionDate: {
+    type: Date
+  },
+  rejectionReason: {
+    type: String
+  },
+  rejectedByRole: {
+    type: String
+  },
+  rejectedAt: {
+    type: Date
+  },
+  priority: {
+    type: String,
+    enum: ['normal', 'urgent'],
+    default: 'normal'
+  },
+  archived: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

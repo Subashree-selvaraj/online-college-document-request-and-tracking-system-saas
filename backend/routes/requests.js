@@ -2,17 +2,29 @@ const express = require('express');
 const router = express.Router();
 const Request = require('../models/Request');
 const User = require('../models/User');
+const Document = require('../models/Document');
+const RequestLog = require('../models/RequestLog');
+const Notification = require('../models/Notification');
+const RequestComment = require('../models/RequestComment');
+const {
+  getApprovalCategory,
+  calculateExpectedCompletionDate,
+  requiresHod,
+  requiresPrincipal,
+  DEPARTMENT_DOCUMENTS,
+  OFFICIAL_DOCUMENTS
+} = require('../config/documentApprovalConfig');
 const auth = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 
-// Configure Cloudinary
+// Configure Cloudinary (use environment variables in production)
 cloudinary.config({
-  cloud_name: 'dicidynbn',
-  api_key: '459279783158968',
-  api_secret: 'UOGWwhVbod6pzzCB-aTPdZ4TpZs'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // Ensure uploads directory exists
@@ -58,6 +70,34 @@ const upload = multer({
   }
 });
 
+async function createRequestLog(requestId, user, role, action, remarks) {
+  try {
+    await RequestLog.create({
+      requestId,
+      actionBy: user ? user.id : undefined,
+      role: role || (user ? user.role : undefined),
+      action,
+      remarks
+    });
+  } catch (err) {
+    console.error('Error creating request log:', err);
+  }
+}
+
+async function createStudentNotification(request, title, message) {
+  try {
+    if (!request || !request.studentId) return;
+    await Notification.create({
+      userId: request.studentId,
+      title,
+      message,
+      link: `/student/requests/${request._id}`
+    });
+  } catch (err) {
+    console.error('Error creating notification:', err);
+  }
+}
+
 // @route   POST /api/requests
 // @desc    Create a new document request
 // @access  Student only
@@ -68,16 +108,63 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only students can create requests' });
     }
     
-    const { documentType, formData } = req.body;
+    const { documentType, formData, priority } = req.body;
+
+    const category = getApprovalCategory(documentType);
+    const expectedCompletionDate = calculateExpectedCompletionDate(category);
+    const requiresPrincipalApproval = requiresPrincipal(category);
+    
+    // Enforce urgent priority limit (max 1 urgent per 7 days)
+    let finalPriority = priority === 'urgent' ? 'urgent' : 'normal';
+    if (finalPriority === 'urgent') {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const urgentCount = await Request.countDocuments({
+        studentId: req.user.id,
+        priority: 'urgent',
+        createdAt: { $gte: oneWeekAgo }
+      });
+      if (urgentCount >= 1) {
+        return res.status(400).json({
+          message: 'You can only create one urgent request per week.'
+        });
+      }
+    }
+
+    // Determine assigned admin based on handled document types
+    let assignedAdmin = null;
+    try {
+      const admins = await User.find({ role: 'admin' });
+      const eligibleAdmins = admins.filter(admin => 
+        Array.isArray(admin.handledDocumentTypes) &&
+        admin.handledDocumentTypes.includes(documentType)
+      );
+      
+      const pool = eligibleAdmins.length > 0 ? eligibleAdmins : admins;
+      
+      if (pool.length > 0) {
+        const randomIndex = Math.floor(Math.random() * pool.length);
+        assignedAdmin = pool[randomIndex]._id;
+      }
+    } catch (adminErr) {
+      console.error('Error selecting assigned admin for request:', adminErr);
+    }
     
     // Create new request
     const request = new Request({
       studentId: req.user.id,
       documentType,
-      formData
+      formData,
+      requiresPrincipalApproval,
+      assignedAdmin,
+      approvalStage: 'submitted',
+      expectedCompletionDate,
+      priority: finalPriority
     });
     
     await request.save();
+
+    await createRequestLog(request._id, req.user, 'student', 'student_submitted', null);
     
     res.status(201).json(request);
   } catch (err) {
@@ -87,16 +174,70 @@ router.post('/', auth, async (req, res) => {
 });
 
 // @route   GET /api/requests
-// @desc    Get all requests (admin) or user's requests (student)
+// @desc    Get all requests (admin/principal) or user's requests (student)
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
     let requests;
+    const role = req.user.role;
     
-    if (req.user.role === 'admin') {
-      // Admin can see all requests
-      requests = await Request.find().sort({ createdAt: -1 });
+    if (role === 'admin') {
+      // Admin can see only requests relevant to them (by handled types or assignment)
+      const admin = await User.findById(req.user.id);
+      let query = {};
+
+      if (admin && Array.isArray(admin.handledDocumentTypes) && admin.handledDocumentTypes.length > 0) {
+        query = {
+          $or: [
+            { assignedAdmin: admin._id },
+            { documentType: { $in: admin.handledDocumentTypes } }
+          ]
+        };
+      } else {
+        // If no specific handled types configured, default to all requests
+        query = {};
+      }
+
+      // Optional filtering by documentType via query string
+      if (req.query.documentType) {
+        query.documentType = req.query.documentType;
+      }
+
+      requests = await Request.find(query).sort({ createdAt: -1 });
       
+      // Populate student details
+      requests = await Promise.all(requests.map(async (request) => {
+        const student = await User.findById(request.studentId).select('-password');
+        return {
+          ...request.toObject(),
+          student
+        };
+      }));
+    } else if (role === 'hod') {
+      // HOD sees department + official documents
+      const hodTypes = [...DEPARTMENT_DOCUMENTS, ...OFFICIAL_DOCUMENTS];
+      requests = await Request.find({
+        documentType: { $in: hodTypes }
+      }).sort({ createdAt: -1 });
+
+      requests = await Promise.all(requests.map(async (request) => {
+        const student = await User.findById(request.studentId).select('-password');
+        return {
+          ...request.toObject(),
+          student
+        };
+      }));
+    } else if (role === 'principal') {
+      // Principal work queue: only official docs that still need principal
+      const officialNames = OFFICIAL_DOCUMENTS;
+
+      const query = {
+        documentType: { $in: officialNames },
+        status: { $nin: ['Completed', 'Rejected'] }
+      };
+
+      requests = await Request.find(query).sort({ createdAt: -1 });
+
       // Populate student details
       requests = await Promise.all(requests.map(async (request) => {
         const student = await User.findById(request.studentId).select('-password');
@@ -206,12 +347,54 @@ router.put('/:id/status', auth, async (req, res) => {
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
+
+    const category = getApprovalCategory(request.documentType);
     
-    // Update request
-    request.status = status || request.status;
-    request.remarks = remarks || request.remarks;
-    
-    await request.save();
+    if (status === 'Approved') {
+      request.status = 'Approved';
+      request.remarks = remarks || request.remarks;
+
+      if (category === 'instant') {
+        request.approvalStage = 'ready_for_issue';
+      } else {
+        request.approvalStage = 'admin_verified';
+      }
+
+      // Clear any previous rejection flags
+      request.rejectionReason = undefined;
+      request.rejectedAt = undefined;
+      request.rejectedByRole = undefined;
+
+      await request.save();
+
+      await createRequestLog(request._id, req.user, 'admin', 'admin_verified', remarks);
+      await createStudentNotification(
+        request,
+        'Request verified by admin',
+        `Your request for ${request.documentType} has been verified by admin.`
+      );
+    } else if (status === 'Rejected') {
+      request.status = 'Rejected';
+      request.remarks = remarks || request.remarks;
+      request.approvalStage = 'rejected';
+      request.rejectionReason = remarks || 'Rejected';
+      request.rejectedByRole = 'admin';
+      request.rejectedAt = new Date();
+
+      await request.save();
+
+      await createRequestLog(request._id, req.user, 'admin', 'admin_rejected', remarks);
+      await createStudentNotification(
+        request,
+        'Request rejected by admin',
+        `Your request for ${request.documentType} was rejected by admin. Reason: ${remarks || 'No reason provided.'}`
+      );
+    } else {
+      // Fallback: preserve previous behaviour for other statuses
+      request.status = status || request.status;
+      request.remarks = remarks || request.remarks;
+      await request.save();
+    }
     
     res.json(request);
   } catch (err) {
@@ -278,6 +461,15 @@ router.post('/:id/upload', auth, (req, res, next) => {
     
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
+    }
+
+    // Enforce approval workflow: only allow upload when ready_for_issue
+    if (request.approvalStage && request.approvalStage !== 'ready_for_issue') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document cannot be issued until required authorities approve.',
+        error: 'APPROVALS_PENDING'
+      });
     }
     
     // Check if request is in a state that allows document upload
@@ -452,6 +644,7 @@ router.post('/:id/upload', auth, (req, res, next) => {
       console.log("Setting request status to Completed");
       
       await request.save();
+      await createRequestLog(request._id, req.user, 'admin', 'admin_uploaded_document', req.body.remarks);
       
       // Send email notification
       try {
@@ -498,6 +691,14 @@ router.put('/:id/upload', auth, upload.single('document'), async (req, res) => {
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
+
+    // Enforce approval workflow: only allow upload when ready_for_issue
+    if (request.approvalStage && request.approvalStage !== 'ready_for_issue') {
+      return res.status(400).json({
+        message: 'Document cannot be issued until required authorities approve.',
+        error: 'APPROVALS_PENDING'
+      });
+    }
     
     // Handle document upload or link
     let documentUrl = null;
@@ -535,6 +736,7 @@ router.put('/:id/upload', auth, upload.single('document'), async (req, res) => {
       
       request.issuedDocLink = documentUrl;
       request.status = 'Completed';
+      request.approvalStage = 'completed';
       statusUpdated = true;
     } else if (req.body.issuedDocLink && req.body.issuedDocLink.trim()) {
       // Handle document link from request body
@@ -542,6 +744,7 @@ router.put('/:id/upload', auth, upload.single('document'), async (req, res) => {
       console.log("Document URL from request body:", documentUrl);
       request.issuedDocLink = documentUrl;
       request.status = 'Completed';
+      request.approvalStage = 'completed';
       statusUpdated = true;
     } else if (req.body.status) {
       // Allow status updates without file/link
@@ -613,6 +816,14 @@ router.patch('/:id/upload', auth, async (req, res) => {
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
+
+    // Enforce approval workflow: only allow upload when ready_for_issue
+    if (request.approvalStage && request.approvalStage !== 'ready_for_issue') {
+      return res.status(400).json({
+        message: 'Document cannot be issued until required authorities approve.',
+        error: 'APPROVALS_PENDING'
+      });
+    }
     
     let statusUpdated = false;
     
@@ -621,6 +832,7 @@ router.patch('/:id/upload', auth, async (req, res) => {
       console.log("Document URL from request body:", req.body.issuedDocLink);
       request.issuedDocLink = req.body.issuedDocLink.trim();
       request.status = 'Completed';
+      request.approvalStage = 'completed';
       statusUpdated = true;
     }
     
@@ -700,6 +912,15 @@ router.post('/:id/validate-upload', auth, (req, res, next) => {
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
+
+    // Enforce approval workflow: only allow upload when ready_for_issue
+    if (request.approvalStage && request.approvalStage !== 'ready_for_issue') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document cannot be issued until required authorities approve.',
+        error: 'APPROVALS_PENDING'
+      });
+    }
     
     // Validate upload data
     const hasFile = !!req.file;
@@ -776,10 +997,20 @@ router.put('/:id/document-link', auth, async (req, res) => {
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
+
+    // Enforce approval workflow: only allow upload when ready_for_issue
+    if (request.approvalStage && request.approvalStage !== 'ready_for_issue') {
+      return res.status(400).json({
+        success: false,
+        message: 'Document cannot be issued until required authorities approve.',
+        error: 'APPROVALS_PENDING'
+      });
+    }
     
     // Update document link
     request.issuedDocLink = documentLink.trim();
     request.status = 'Completed';
+    request.approvalStage = 'completed';
     if (remarks !== undefined) {
       request.remarks = remarks;
     }
@@ -831,6 +1062,346 @@ router.get('/student/:studentId', auth, async (req, res) => {
     const requests = await Request.find({ studentId: req.params.studentId }).sort({ createdAt: -1 });
     
     res.json(requests);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/requests/:id/hod-approve
+// @desc    HOD approves department/official document
+// @access  HOD only
+router.put('/:id/hod-approve', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'hod') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { remarks } = req.body;
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    const category = getApprovalCategory(request.documentType);
+
+    if (!requiresHod(category)) {
+      return res.status(400).json({
+        message: 'This request does not require HOD approval'
+      });
+    }
+
+    // Require admin verification first
+    if (request.approvalStage !== 'admin_verified') {
+      return res.status(400).json({
+        message: 'Admin verification is required before HOD approval'
+      });
+    }
+
+    if (category === 'department') {
+      request.approvalStage = 'ready_for_issue';
+    } else {
+      request.approvalStage = 'hod_verified';
+    }
+
+    if (remarks !== undefined) {
+      request.remarks = remarks;
+    }
+
+    await request.save();
+
+    await createRequestLog(request._id, req.user, 'hod', 'hod_approved', remarks);
+    await createStudentNotification(
+      request,
+      'Request approved by HOD',
+      `Your request for ${request.documentType} has been approved by HOD.`
+    );
+
+    res.json(request);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/requests/:id/hod-reject
+// @desc    HOD rejects document request
+// @access  HOD only
+router.put('/:id/hod-reject', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'hod') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { remarks } = req.body;
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    const category = getApprovalCategory(request.documentType);
+
+    if (!requiresHod(category)) {
+      return res.status(400).json({
+        message: 'This request does not require HOD approval'
+      });
+    }
+
+    request.status = 'Rejected';
+    request.approvalStage = 'rejected';
+    request.rejectionReason = remarks || 'Rejected';
+    request.rejectedByRole = 'hod';
+    request.rejectedAt = new Date();
+
+    if (remarks !== undefined) {
+      request.remarks = remarks;
+    }
+
+    await request.save();
+
+    await createRequestLog(request._id, req.user, 'hod', 'hod_rejected', remarks);
+    await createStudentNotification(
+      request,
+      'Request rejected by HOD',
+      `Your request for ${request.documentType} was rejected by HOD. Reason: ${remarks || 'No reason provided.'}`
+    );
+
+    res.json(request);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/requests/:id/principal-approve
+// @desc    Principal verifies/approves an official document request
+// @access  Principal only
+router.put('/:id/principal-approve', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'principal') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { remarks } = req.body;
+
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    const category = getApprovalCategory(request.documentType);
+
+    if (!requiresPrincipal(category)) {
+      return res.status(400).json({
+        message: 'This request does not require principal approval'
+      });
+    }
+
+    // Require HOD verification first for official documents
+    if (request.approvalStage !== 'hod_verified') {
+      return res.status(400).json({
+        message: 'HOD approval is required before principal approval'
+      });
+    }
+
+    request.principalApproved = true;
+    request.principalId = req.user.id;
+    request.principalApprovedAt = Date.now();
+    request.approvalStage = 'ready_for_issue';
+
+    if (remarks !== undefined) {
+      request.remarks = remarks;
+    }
+
+    await request.save();
+
+    await createRequestLog(request._id, req.user, 'principal', 'principal_approved', remarks);
+    await createStudentNotification(
+      request,
+      'Request approved by Principal',
+      `Your request for ${request.documentType} has been approved by Principal.`
+    );
+
+    res.json(request);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/requests/:id/principal-reject
+// @desc    Principal rejects official document request
+// @access  Principal only
+router.put('/:id/principal-reject', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'principal') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { remarks } = req.body;
+
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    const category = getApprovalCategory(request.documentType);
+
+    if (!requiresPrincipal(category)) {
+      return res.status(400).json({
+        message: 'This request does not require principal approval'
+      });
+    }
+
+    request.status = 'Rejected';
+    request.approvalStage = 'rejected';
+    request.rejectionReason = remarks || 'Rejected';
+    request.rejectedByRole = 'principal';
+    request.rejectedAt = new Date();
+
+    if (remarks !== undefined) {
+      request.remarks = remarks;
+    }
+
+    await request.save();
+
+    await createRequestLog(request._id, req.user, 'principal', 'principal_rejected', remarks);
+    await createStudentNotification(
+      request,
+      'Request rejected by Principal',
+      `Your request for ${request.documentType} was rejected by Principal. Reason: ${remarks || 'No reason provided.'}`
+    );
+
+    res.json(request);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/requests/:id/timeline
+// @desc    Get timeline logs for a request
+// @access  Private
+router.get('/:id/timeline', auth, async (req, res) => {
+  try {
+    const logs = await RequestLog.find({ requestId: req.params.id }).sort({ timestamp: 1 });
+    res.json(logs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/requests/:id/resubmit
+// @desc    Student resubmits a rejected request with corrections
+// @access  Student only
+router.post('/:id/resubmit', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ message: 'Only students can resubmit requests' });
+    }
+
+    const request = await Request.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (request.studentId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (request.approvalStage !== 'rejected') {
+      return res.status(400).json({ message: 'Only rejected requests can be resubmitted' });
+    }
+
+    const { formData, remarks } = req.body || {};
+
+    if (formData && typeof formData === 'object') {
+      request.formData = {
+        ...request.formData,
+        ...formData
+      };
+    }
+
+    const category = getApprovalCategory(request.documentType);
+    request.approvalStage = 'submitted';
+    request.status = 'Pending';
+    request.rejectionReason = undefined;
+    request.rejectedByRole = undefined;
+    request.rejectedAt = undefined;
+    request.expectedCompletionDate = calculateExpectedCompletionDate(category);
+
+    await request.save();
+
+    await createRequestLog(request._id, req.user, 'student', 'student_resubmitted', remarks);
+
+    res.json(request);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/requests/:id/comments
+// @desc    Get comments for a request
+// @access  Private
+router.get('/:id/comments', auth, async (req, res) => {
+  try {
+    const request = await Request.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    // Students can only see their own, staff can see all
+    if (req.user.role === 'student' && request.studentId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const comments = await RequestComment.find({ requestId: req.params.id }).sort({ timestamp: 1 });
+    res.json(comments);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/requests/:id/comments
+// @desc    Add a comment to a request
+// @access  Private
+router.post('/:id/comments', auth, async (req, res) => {
+  try {
+    const { message, attachments } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    const request = await Request.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    // Students can only comment on their own requests
+    if (req.user.role === 'student' && request.studentId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const comment = await RequestComment.create({
+      requestId: req.params.id,
+      userId: req.user.id,
+      role: req.user.role,
+      message: message.trim(),
+      attachments: Array.isArray(attachments) ? attachments : []
+    });
+
+    await createRequestLog(request._id, req.user, req.user.role, 'comment_added', message);
+
+    res.status(201).json(comment);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
