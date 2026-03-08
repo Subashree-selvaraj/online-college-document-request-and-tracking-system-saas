@@ -1,0 +1,51 @@
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu,
+    Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+    "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #070a13;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Bootstrap tweaks */
+.text-muted {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.card,
+.card-header {
+  color: rgba(255, 255, 255, 0.90);
+}
+
+/* All tables: force light text on dark theme */
+.table,
+.table th,
+.table td,
+.table thead th,
+.table tbody td,
+.table-light,
+.table-light th,
+.table-light td {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+.table .text-muted,
+.table small {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.table-light {
+  --bs-table-bg: rgba(255, 255, 255, 0.06);
+  --bs-table-color: rgba(255, 255, 255, 0.92);
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.08);
+  --bs-table-striped-color: rgba(255, 255, 255, 0.90);
+  --bs-table-active-bg: rgba(255, 255, 255, 0.10);
+  --bs-table-active-color: rgba(255, 255, 255, 0.95);
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.08);
+  --bs-table-hover-color: rgba(255, 255, 255, 0.95);
+}
