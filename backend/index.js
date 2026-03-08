@@ -76,7 +76,6 @@ app.use(
     optionsSuccessStatus: 204
   })
 );
-app.options('*', cors());
 
 app.use(
   helmet({
