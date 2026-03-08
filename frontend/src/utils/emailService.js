@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 // Email service utility for sending notifications
 
 // Store notification preferences (in a real app, this would be in a database)

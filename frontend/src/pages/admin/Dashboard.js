@@ -104,17 +104,17 @@ const Dashboard = () => {
   }, []);
   
   useEffect(() => {
-      // Set up polling for real-time updates (every 30 seconds)
-      const pollingInterval = setInterval(() => {
-        fetchDashboardData();
-      }, 30000);
-      
-      // Clean up interval on component unmount
-      return () => clearInterval(pollingInterval);
-    }, [fetchDashboardData]);
-  useEffect(() => {
+    // Initial fetch
     fetchDashboardData();
-  }, []);
+
+    // Set up polling for real-time updates (every 30 seconds)
+    const pollingInterval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(pollingInterval);
+  }, [fetchDashboardData]);
 
   const getStatusBadgeClass = (status) => {
     switch (status) {

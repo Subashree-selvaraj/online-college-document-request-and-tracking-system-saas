@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Badge, Button, Row, Col, Alert } from 'react-bootstrap';
+import { Badge, Button, Row, Col, Alert } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { requestsAPI } from '../../api';
 import emailService from '../../utils/emailService';
@@ -43,7 +43,7 @@ const RequestDetails = () => {
     'No Objection Certificate (NOC)'
   ];
 
-  const fetchRequestDetails = async () => {
+  const fetchRequestDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -75,7 +75,7 @@ const RequestDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestId]);
 
   useEffect(() => {
     if (requestId) {
@@ -89,7 +89,7 @@ const RequestDetails = () => {
       // Clean up interval on component unmount
       return () => clearInterval(pollingInterval);
     }
-  }, [requestId]);
+  }, [requestId, fetchRequestDetails]);
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {

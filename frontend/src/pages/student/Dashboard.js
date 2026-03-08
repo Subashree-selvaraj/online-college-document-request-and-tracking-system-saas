@@ -94,21 +94,6 @@ const Dashboard = () => {
     }
   }, [user, fetchDashboardData]);
 
-  const getStatusBadgeVariant = (status) => {
-    switch (status) {
-      case 'Pending':
-        return 'warning';
-      case 'Approved':
-        return 'info';
-      case 'Completed':
-        return 'success';
-      case 'Rejected':
-        return 'danger';
-      default:
-        return 'secondary';
-    }
-  };
-  
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'Pending':

@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Badge, Button, Form, Modal, Row, Col, Alert } from 'react-bootstrap';
-import { useAuth } from '../../context/AuthContext';
+import { Table, Badge, Button, Form, Modal, Row, Col, Alert } from 'react-bootstrap';
 import { requestsAPI } from '../../api';
 import { userAPI } from '../../api';
 import emailService from '../../utils/emailService';
-import api, { requestsAPI as requestsApiClient } from '../../api';
+import api from '../../api';
 
 const RequestManagement = () => {
-  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

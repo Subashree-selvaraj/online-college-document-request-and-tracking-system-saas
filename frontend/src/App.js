@@ -10,7 +10,6 @@ import Layout from './components/layout/Layout';
 
 // Auth Components
 import Login from './components/auth/Login';
-import Register from './components/auth/Register';
 
 // Protected route component
 const ProtectedRoute = ({ children, requiredRole }) => {

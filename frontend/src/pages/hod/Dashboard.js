@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Table, Badge, Button, Alert } from 'react-bootstrap';
-import { useAuth } from '../../context/AuthContext';
 import { requestsAPI } from '../../api';
 
 const HodDashboard = () => {
-  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
