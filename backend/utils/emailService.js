@@ -11,6 +11,16 @@ const transporter = nodemailer.createTransport({
 });
 
 const emailService = {
+  verifyTransporter: async () => {
+    try {
+      await transporter.verify();
+      console.log('Email transporter verified');
+      return true;
+    } catch (e) {
+      console.error('Email transporter verification failed:', e);
+      return false;
+    }
+  },
   // Send email notification when a document request status changes
   sendStatusUpdateEmail: async (recipientEmail, studentName, documentType, status, remarks) => {
     try {

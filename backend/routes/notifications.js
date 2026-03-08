@@ -8,6 +8,9 @@ router.get('/', auth, async (req, res) => {
   try {
     const notifications = await Notification.find({ userId: req.user.id })
       .sort({ createdAt: -1 });
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     res.json(notifications);
   } catch (err) {
     console.error(err);
@@ -38,4 +41,3 @@ router.patch('/:id/read', auth, async (req, res) => {
 });
 
 module.exports = router;
-

@@ -13,6 +13,7 @@ require('dotenv').config();
 const User = require('./models/User');
 const Request = require('./models/Request');
 const Document = require('./models/Document');
+const emailSvc = require('./utils/emailService');
 
 // Initialize Express app
 const app = express();
@@ -105,6 +106,13 @@ const connectWithRetry = () => {
 };
 
 connectWithRetry();
+
+if (emailSvc && typeof emailSvc.verifyTransporter === 'function') {
+  emailSvc
+    .verifyTransporter()
+    .then(() => logger.info('Email transporter ready'))
+    .catch((err) => logger.error('Email transporter error', { error: err.message }));
+}
 
 // Health endpoint
 app.get('/health', (req, res) => {
