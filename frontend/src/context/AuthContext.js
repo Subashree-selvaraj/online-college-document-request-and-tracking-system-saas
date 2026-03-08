@@ -116,7 +116,11 @@ export const AuthProvider = ({ children }) => {
       setUser(userInfo);
       return userInfo;
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      const msg = err.response?.data?.message
+        || (typeof err.response?.data === 'string' ? err.response.data : null)
+        || err.message
+        || 'Login failed';
+      setError(msg);
       throw err;
     } finally {
       setLoading(false);

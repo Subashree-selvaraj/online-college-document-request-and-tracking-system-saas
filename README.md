@@ -122,6 +122,19 @@ Backend:
 Frontend:
 - `REACT_APP_API_URL` — base URL of backend API
 
+## Render deployment
+
+When deploying to Render, set these environment variables:
+
+**Backend (Docker Web Service):**
+- `CLIENT_ORIGIN` — `https://your-frontend.onrender.com` (your frontend URL)
+- `MONGO_URI`, `JWT_SECRET`, etc.
+
+**Frontend (Docker Web Service):**
+- `REACT_APP_API_URL` — `https://your-backend.onrender.com/api` (**must use HTTPS**, not `http://`)
+
+If `REACT_APP_API_URL` uses `http://`, Render redirects to HTTPS and the browser may convert POST to GET, causing "Cannot GET /api/auth/login". After changing env vars, redeploy the frontend with **Clear build cache & deploy** so CRA picks up the new values.
+
 ## Contributing
 
 Fork, create a branch, and open a pull request. Include clear descriptions and keep frontend and backend changes separated.
