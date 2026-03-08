@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Row, Col, Button } from 'react-bootstrap';
-import { useAuth } from '../../context/AuthContext';
 import { requestsAPI } from '../../api';
 
 const Dashboard = () => {
-  // const { user } = useAuth(); // user not used
   const [pendingRequests, setPendingRequests] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
