@@ -60,13 +60,23 @@ function loginRateLimiter(req, res, next) {
 }
 
 // Security & core middleware
-const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
+const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim());
 app.use(
   cors({
-    origin: allowedOrigin,
-    credentials: true
+    origin: (origin, cb) => {
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token'],
+    exposedHeaders: ['x-auth-token'],
+    credentials: true,
+    optionsSuccessStatus: 204
   })
 );
+app.options('*', cors());
 
 app.use(
   helmet({
