@@ -17,6 +17,12 @@ const smtpPass =
   process.env.EMAIL_PASS ||
   'wqusavdpzreoobbd';
 
+const FRONTEND_BASE =
+  process.env.FRONTEND_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://campusledger.onrender.com'
+    : 'http://localhost:3000');
+
 // Create a transporter object (pooled for stability on free tiers)
 const transporter = nodemailer.createTransport({
   host: smtpHost,
@@ -121,7 +127,7 @@ const emailService = {
             ${remarks ? `<p><strong>Remarks:</strong> ${remarks}</p>` : ''}
             <p>Please log in to your account to view more details.</p>
             <div style="margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/student/dashboard" 
+              <a href="${FRONTEND_BASE}/student/dashboard" 
                  style="background-color: #3f51b5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
                 View Request
               </a>
@@ -201,7 +207,7 @@ const emailService = {
             </div>
             <p>Please log in to the admin dashboard to review this request.</p>
             <div style="margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/dashboard" 
+              <a href="${FRONTEND_BASE}/admin/dashboard" 
                  style="background-color: #ff9800; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;">
                 Review Request
               </a>

@@ -27,6 +27,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Resolve frontend base URL for links in emails
+const FRONTEND_BASE =
+  process.env.FRONTEND_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://campusledger.onrender.com'
+    : 'http://localhost:3000');
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -655,7 +662,7 @@ router.post('/:id/upload', auth, (req, res, next) => {
             user.email,
             user.name,
             request.documentType,
-            `${process.env.FRONTEND_URL || 'http://localhost:3000'}/student/requests/${request._id}`
+            `${FRONTEND_BASE}/student/requests/${request._id}`
           );
         }
       } catch (emailErr) {
@@ -782,7 +789,7 @@ router.put('/:id/upload', auth, upload.single('document'), async (req, res) => {
           user.email,
           user.name,
           request.documentType,
-          `${process.env.FRONTEND_URL || 'http://localhost:3000'}/student/requests/${request._id}`
+          `${FRONTEND_BASE}/student/requests/${request._id}`
         );
       }
     } catch (emailErr) {
@@ -869,7 +876,7 @@ router.patch('/:id/upload', auth, async (req, res) => {
             user.email,
             user.name,
             request.documentType,
-            `${process.env.FRONTEND_URL || 'http://localhost:3000'}/student/requests/${request._id}`
+            `${FRONTEND_BASE}/student/requests/${request._id}`
           );
         }
       } catch (emailErr) {
