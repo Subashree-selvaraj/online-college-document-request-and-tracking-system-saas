@@ -1,13 +1,36 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Create a transporter object
+// SMTP configuration with environment-driven overrides
+const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+const smtpPort = Number(process.env.SMTP_PORT || 465);
+const smtpSecure = process.env.SMTP_SECURE
+  ? process.env.SMTP_SECURE === 'true'
+  : smtpPort === 465;
+
+const smtpUser =
+  process.env.SMTP_USER ||
+  process.env.EMAIL_USER ||
+  'college.document.system@gmail.com';
+const smtpPass =
+  process.env.SMTP_PASS ||
+  process.env.EMAIL_PASS ||
+  'wqusavdpzreoobbd';
+
+// Create a transporter object (pooled for stability on free tiers)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure,
+  pool: true,
+  maxConnections: 2,
   auth: {
-    user: process.env.EMAIL_USER || 'college.document.system@gmail.com',
-    pass: process.env.EMAIL_PASS || 'wqusavdpzreoobbd'
-  }
+    user: smtpUser,
+    pass: smtpPass
+  },
+  connectionTimeout: 15000,
+  greetingTimeout: 10000,
+  socketTimeout: 20000
 });
 
 const emailService = {
