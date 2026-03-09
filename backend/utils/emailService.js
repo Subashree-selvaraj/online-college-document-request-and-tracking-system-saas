@@ -43,7 +43,7 @@ async function sendViaBrevo(to, subject, html) {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return null;
   const payload = {
-    sender: { name: 'CampusDoc', email: smtpUser },
+    sender: { name: 'CampusLedger', email: smtpUser },
     to: [{ email: to }],
     subject,
     htmlContent: html
@@ -69,7 +69,7 @@ async function sendViaSendgrid(to, subject, html) {
   if (!apiKey) return null;
   const payload = {
     personalizations: [{ to: [{ email: to }] }],
-    from: { email: smtpUser, name: 'CampusDoc' },
+    from: { email: smtpUser, name: 'CampusLedger' },
     subject,
     content: [{ type: 'text/html', value: html }]
   };

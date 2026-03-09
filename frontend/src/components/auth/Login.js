@@ -94,7 +94,7 @@ const Login = () => {
 
       <div className="login-card fade-in-up">
         <div className="login-card-inner">
-          <h1 className="login-logo">CampusDoc</h1>
+          <h1 className="login-logo">CampusLedger</h1>
           <p className="login-tagline">Sign in to your account</p>
 
           <div className="login-role" role="tablist" aria-label="Login as">

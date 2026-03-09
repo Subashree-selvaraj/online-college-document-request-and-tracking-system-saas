@@ -59,7 +59,7 @@ const Navbar = () => {
         <BootstrapNavbar.Brand as={Link} to="/">
           <span className="brand-pill">
             <span className="brand-dot" aria-hidden="true" />
-            <span>CampusDoc</span>
+            <span>CampusLedger</span>
           </span>
         </BootstrapNavbar.Brand>
         <BootstrapNavbar.Toggle aria-controls="basic-navbar-nav" />
